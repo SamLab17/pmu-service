@@ -16,9 +16,9 @@ class RunQueue(Generic[T]):
             self.items.append(value)
     
     def get(self) -> T:
-        with self.queue_sem:
-            with self.items_lock:
-                return self.items.pop(0)
+        self.queue_sem.acquire()
+        with self.items_lock:
+            return self.items.pop(0)
 
     def positionOf(self, recognize: Callable[[T], bool]) -> Union[Tuple[int, int], None]:
         with self.items_lock:

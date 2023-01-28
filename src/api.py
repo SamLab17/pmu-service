@@ -73,7 +73,7 @@ def success(id: str):
     # return 'success!'
 
 
-def runner_thread(run_queue, currently_running_id):
+def runner_thread():
     print("Runner thread started")
     runner.init()
     global currently_running
