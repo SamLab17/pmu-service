@@ -1,16 +1,17 @@
-import re
+import sys
 import subprocess
 from pathlib import Path
 from time import sleep
 import fileinput
 from dataclasses import dataclass
 from typing import Union
+from retry import retry
 
 BASE_IMAGE = Path("images/debian.qcow2")
 OUTPUT_FILE_DIR = Path("output_files")
 
 # 5 minutes
-DEFAULT_TIMEOUT = 60 * 5
+DEFAULT_TIMEOUT = 5 * 60
 
 
 @dataclass
@@ -55,6 +56,11 @@ def trim_boot(file: Path):
         else:
             found_login = "login" in line
 
+@retry(tries=3, delay=1, backoff=2)
+def unmount():
+    subprocess.check_call(["scripts/unmount.sh"])
+    sleep(1)
+
 
 def copy_file_to_disk(disk: Path, file: Path, disk_path: str):
     try:
@@ -66,10 +72,7 @@ def copy_file_to_disk(disk: Path, file: Path, disk_path: str):
         ],
         )
     finally:
-        subprocess.check_call([
-            "scripts/unmount.sh"
-        ])
-        sleep(1)
+        unmount()
 
 
 def remove_file_from_disk(disk: Path, disk_path: str):
@@ -81,10 +84,7 @@ def remove_file_from_disk(disk: Path, disk_path: str):
         ],
         )
     finally:
-        subprocess.check_call([
-            "scripts/unmount.sh"
-        ])
-        sleep(1)
+        unmount()
 
 
 def run_program_on_guest(run_id: str, disk: Path, guest_path: str, timeout: int = 60) -> Path:
@@ -122,7 +122,10 @@ def run(req: RunRequest):
         # Send some kind of error message
         return RunResult(True, str(e), None)
     finally:
-        remove_file_from_disk(BASE_IMAGE, guest_path)
+        try:
+            remove_file_from_disk(BASE_IMAGE, guest_path)
+        except Exception as e:
+            return RunResult(True, str(e), None)
 
 
 def init():
@@ -143,9 +146,17 @@ def init():
 
 
 def main() -> int:
-    test_program = Path("scripts/test_program")
-    guest_path = "/root/test_program"
 
+    if len(sys.argv) < 2:
+        print(f"Usage: runner.py <executable>")
+
+    test_program = Path(sys.argv[1]) 
+    if not test_program.exists():
+        print(f"{test_program} is not a valid path")
+
+    guest_path = f"/root/{test_program.name}"
+
+    print(f"Copying {test_program} to the guest virtual disk")
     copy_file_to_disk(BASE_IMAGE, test_program, guest_path)
 
     print(f"Running {test_program} in VM...")

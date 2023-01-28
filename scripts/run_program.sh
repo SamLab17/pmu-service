@@ -20,9 +20,9 @@ send "root\r"
 expect "~#"
 send "$program\r"
 
-# set timeout [lindex $argv 2]
+set timeout [lindex $argv 2]
 expect {
 	"~#" { send "shutdown -h now" }
-	timeout { exit 1 }
+	timeout { puts "\n --- \n TIMEOUT \n --- \n"; exit 1 }
 }
 

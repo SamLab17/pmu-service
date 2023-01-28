@@ -60,7 +60,7 @@ def success(id: str):
     elif currently_running == id:
         return render_template('query.html', msg='Your program is currently running', id=id)
     else:
-        pos = run_queue.positionOf(lambda r: r == id) 
+        pos = run_queue.positionOf(lambda r: r.id == id) 
         if pos is None:
             return render_template('query.html', msg='Invalid id', id=id)
         else:
