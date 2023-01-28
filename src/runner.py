@@ -135,7 +135,7 @@ def init():
     if not BASE_IMAGE.exists():
         print(f"Did not find {BASE_IMAGE.name} at {BASE_IMAGE}")
         print(f"Downloading an image...")
-        DEBIAN_IMAGE_URL = "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-amd64.qcow2"
+        DEBIAN_IMAGE_URL = "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-nocloud-arm64.qcow2"
         subprocess.check_call([
             "wget",
             "-O",

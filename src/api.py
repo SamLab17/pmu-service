@@ -78,6 +78,8 @@ def runner_thread():
         currently_running = next_req.id
         running_start = datetime.now()
         result = runner.run(next_req)
+        if result.error:
+            print(result.err_msg)
         run_results[next_req.id] = result
         print(f"finished running {next_req.id}")
 
