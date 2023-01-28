@@ -5,6 +5,7 @@ from run_queue import RunQueue
 from typing import Dict
 from datetime import datetime
 from threading import Thread
+import subprocess
 import runner
 import uuid
 
@@ -19,6 +20,7 @@ app.secret_key = 'very secure'
 # 32 MB upload size limit
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
 UPLOAD_PATH = Path("uploads")
+
 
 run_queue = RunQueue()
 run_results: Dict[str, RunResult] = {}
@@ -69,7 +71,6 @@ def success(id: str):
 
 def runner_thread():
     print("Runner thread started")
-    runner.init()
     global currently_running
     global running_start
     while True:
@@ -81,6 +82,12 @@ def runner_thread():
         print(f"finished running {next_req.id}")
 
 if __name__ == '__main__':
+    # Make sure upload directory exists
+    subprocess.check_call(["mkdir", "-p", str(UPLOAD_PATH)])
+
+    # Initialize runner
+    runner.init()
+
     t = Thread(target=runner_thread)
     t.start()
     app.run()
