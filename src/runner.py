@@ -9,16 +9,22 @@ from typing import Union
 BASE_IMAGE = Path("images/debian.qcow2")
 OUTPUT_FILE_DIR = Path("output_files")
 
+# 5 minutes
+DEFAULT_TIMEOUT = 60 * 5
+
+
 @dataclass
 class RunRequest():
     id: str
     file: Path
 
-@dataclass 
+
+@dataclass
 class RunResult():
     error: bool
     err_msg: str
     output_file: Union[Path, None]
+
 
 def strip_ansi(file: Path) -> str:
     """Strip ANSI color codes from output. From https://superuser.com/a/380778"""
@@ -28,6 +34,7 @@ def strip_ansi(file: Path) -> str:
         r"s/\x1b\[[\?0-9;]*[mhl]//g",
         str(file.absolute())
     ])
+
 
 def trim_boot(file: Path):
     """Trim boot info from beginning of file"""
@@ -49,28 +56,14 @@ def trim_boot(file: Path):
             found_login = "login" in line
 
 
-def make_snapshot_disk(base_image: Path) -> Path:
-    SNAPSHOT_IMAGE = "guest.qcow2"
-    subprocess.check_call([
-        "qemu-img",
-        "create",
-        "-f", "qcow2",
-        "-b", f"{base_image.absolute()}",
-        SNAPSHOT_IMAGE
-    ])
-    ret = Path(SNAPSHOT_IMAGE)
-    assert(ret.exists())
-    return ret
-
-
 def copy_file_to_disk(disk: Path, file: Path, disk_path: str):
     try:
         subprocess.check_call([
-                "scripts/copy_to_guest.sh",
-                str(disk.absolute()),
-                str(file.absolute()),
-                disk_path
-            ],
+            "scripts/copy_to_guest.sh",
+            str(disk.absolute()),
+            str(file.absolute()),
+            disk_path
+        ],
         )
     finally:
         subprocess.check_call([
@@ -82,10 +75,10 @@ def copy_file_to_disk(disk: Path, file: Path, disk_path: str):
 def remove_file_from_disk(disk: Path, disk_path: str):
     try:
         subprocess.check_call([
-                "scripts/remove_guest_file.sh",
-                str(disk.absolute()),
-                disk_path
-            ],
+            "scripts/remove_guest_file.sh",
+            str(disk.absolute()),
+            disk_path
+        ],
         )
     finally:
         subprocess.check_call([
@@ -94,18 +87,17 @@ def remove_file_from_disk(disk: Path, disk_path: str):
         sleep(1)
 
 
-
 def run_program_on_guest(run_id: str, disk: Path, guest_path: str, timeout: int = 60) -> Path:
     outfile_path = OUTPUT_FILE_DIR / Path(f"output-{run_id}.txt")
     outfile = open(outfile_path, 'w')
 
     subprocess.run([
-            "expect",
-            "scripts/run_program.sh",
-            str(disk.absolute()),
-            guest_path,
-            str(timeout)
-        ],
+        "expect",
+        "scripts/run_program.sh",
+        str(disk.absolute()),
+        guest_path,
+        str(timeout)
+    ],
         stdout=outfile,
         stderr=outfile,
         # Shouldn't take more than ~5 seconds to boot the VM
@@ -117,13 +109,13 @@ def run_program_on_guest(run_id: str, disk: Path, guest_path: str, timeout: int 
     strip_ansi(outfile_path)
     return outfile_path
 
+
 def run(req: RunRequest):
-    print("run!")
     test_program = req.file
     guest_path = f"/root/{test_program.name}"
     try:
         copy_file_to_disk(BASE_IMAGE, test_program, guest_path)
-        output = run_program_on_guest(req.id, BASE_IMAGE, guest_path)
+        output = run_program_on_guest(req.id, BASE_IMAGE, guest_path, timeout=DEFAULT_TIMEOUT)
         return RunResult(False, "", output)
         # Send output
     except Exception as e:
@@ -131,6 +123,7 @@ def run(req: RunRequest):
         return RunResult(True, str(e), None)
     finally:
         remove_file_from_disk(BASE_IMAGE, guest_path)
+
 
 def init():
     # Make output file directory
@@ -148,8 +141,8 @@ def init():
         ])
         assert BASE_IMAGE.exists()
 
-def main() -> int:
 
+def main() -> int:
     test_program = Path("scripts/test_program")
     guest_path = "/root/test_program"
 
@@ -161,7 +154,8 @@ def main() -> int:
     for line in open(output, 'r'):
         print(line, end='')
 
-    raise(SystemExit(0))
+    return 0
+
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

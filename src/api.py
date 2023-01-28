@@ -1,24 +1,19 @@
-import os
-import atexit
-from dataclasses import dataclass
-from queue import Queue
 from flask import Flask, render_template, request, flash, redirect, send_file
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from run_queue import RunQueue
-from typing import Union
+from typing import Dict
 from datetime import datetime
 from threading import Thread
 import runner
 import uuid
-import multiprocessing
 
 from runner import RunRequest, RunResult
 
 
-
 app = Flask("pmu-service", template_folder='src/html')
 
+# Obviously need to change this if deployed
 app.secret_key = 'very secure'
 
 # 32 MB upload size limit
@@ -26,7 +21,7 @@ app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
 UPLOAD_PATH = Path("uploads")
 
 run_queue = RunQueue()
-run_results: dict[str, RunResult] = {}
+run_results: Dict[str, RunResult] = {}
 
 currently_running: str = ""
 running_start: datetime = datetime.now()
@@ -63,14 +58,13 @@ def success(id: str):
         else:
             return send_file(res.output_file)
     elif currently_running == id:
-        return render_template('query.html', msg='Your program is currently running')
+        return render_template('query.html', msg='Your program is currently running', id=id)
     else:
         pos = run_queue.positionOf(lambda r: r == id) 
         if pos is None:
-            return render_template('query.html', msg='Invalid id')
+            return render_template('query.html', msg='Invalid id', id=id)
         else:
-            return render_template('query.html', msg=f'Your program is {pos[0]}/{pos[1]} in the queue.')
-    # return 'success!'
+            return render_template('query.html', msg=f'Your program is {pos[0]}/{pos[1]} in the queue.', id=id)
 
 
 def runner_thread():
@@ -89,5 +83,4 @@ def runner_thread():
 if __name__ == '__main__':
     t = Thread(target=runner_thread)
     t.start()
-    # atexit.register(lambda: p.kill())
     app.run()
