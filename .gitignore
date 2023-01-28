@@ -1,0 +1,4 @@
+images/debian.qcow2
+output_files
+uploads/
+src/__pycache__
